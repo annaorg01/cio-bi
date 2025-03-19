@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, ReactNode } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { IframeContainer } from '@/components/iframe/IframeContainer';
@@ -12,7 +12,11 @@ const defaultLinks = [
   { name: 'יצירת קשר', url: 'https://www.hod-hasharon.muni.il/contact' },
 ];
 
-export const DashboardLayout: React.FC = () => {
+interface DashboardLayoutProps {
+  children?: ReactNode;
+}
+
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
 
@@ -36,7 +40,7 @@ export const DashboardLayout: React.FC = () => {
               <IframeContainer url={selectedUrl} className="h-full" />
             </div>
             
-            <Outlet />
+            {children || <Outlet />}
           </div>
         </main>
       </div>
