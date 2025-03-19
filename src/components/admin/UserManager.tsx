@@ -1,12 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { PlusCircle, Trash2, Link as LinkIcon } from 'lucide-react';
+import { PlusCircle, Trash2, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface UserLink {
   id: string;
@@ -20,31 +22,57 @@ interface UserData {
   links: UserLink[];
 }
 
-// Sample data for demonstration
-const initialUsers: UserData[] = [
-  {
-    id: '1',
-    username: 'user1',
-    links: [
-      { id: '1-1', name: 'פורטל עובדים', url: 'https://example.com/portal' },
-      { id: '1-2', name: 'מערכת נוכחות', url: 'https://example.com/attendance' }
-    ]
-  },
-  {
-    id: '2',
-    username: 'user2',
-    links: [
-      { id: '2-1', name: 'פורטל עובדים', url: 'https://example.com/portal' }
-    ]
-  }
-];
-
 export const UserManager: React.FC = () => {
-  const [users, setUsers] = useState<UserData[]>(initialUsers);
+  const [users, setUsers] = useState<UserData[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Fetch users and their links
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch profiles
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username');
+        
+        if (profilesError) throw profilesError;
+        
+        // For each profile, fetch their links
+        const usersWithLinks = await Promise.all(
+          profiles.map(async (profile) => {
+            const { data: links, error: linksError } = await supabase
+              .from('user_links')
+              .select('id, name, url')
+              .eq('user_id', profile.id);
+            
+            if (linksError) throw linksError;
+            
+            return {
+              id: profile.id,
+              username: profile.username || 'Unknown User',
+              links: links || []
+            };
+          })
+        );
+        
+        setUsers(usersWithLinks);
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        setError('Failed to load users. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUsers();
+  }, []);
 
   const handleSelectUser = (user: UserData) => {
     setSelectedUser(user);
@@ -52,7 +80,7 @@ export const UserManager: React.FC = () => {
     setNewLinkUrl('');
   };
 
-  const handleAddLink = () => {
+  const handleAddLink = async () => {
     if (!selectedUser || !newLinkName || !newLinkUrl) return;
     
     if (!newLinkUrl.startsWith('http')) {
@@ -64,54 +92,106 @@ export const UserManager: React.FC = () => {
       return;
     }
 
-    const newLink: UserLink = {
-      id: `${selectedUser.id}-${Date.now()}`,
-      name: newLinkName,
-      url: newLinkUrl
-    };
+    try {
+      // Add link to database
+      const { data, error } = await supabase
+        .from('user_links')
+        .insert({
+          user_id: selectedUser.id,
+          name: newLinkName,
+          url: newLinkUrl
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
 
-    const updatedUsers = users.map(user => {
-      if (user.id === selectedUser.id) {
-        return {
-          ...user,
-          links: [...user.links, newLink]
-        };
-      }
-      return user;
-    });
+      // Update local state
+      const updatedUsers = users.map(user => {
+        if (user.id === selectedUser.id) {
+          return {
+            ...user,
+            links: [...user.links, data]
+          };
+        }
+        return user;
+      });
 
-    setUsers(updatedUsers);
-    setSelectedUser(updatedUsers.find(u => u.id === selectedUser.id) || null);
-    setNewLinkName('');
-    setNewLinkUrl('');
+      setUsers(updatedUsers);
+      setSelectedUser(updatedUsers.find(u => u.id === selectedUser.id) || null);
+      setNewLinkName('');
+      setNewLinkUrl('');
 
-    toast({
-      title: "הקישור נוסף בהצלחה",
-      description: `הקישור "${newLinkName}" נוסף למשתמש ${selectedUser.username}`,
-    });
+      toast({
+        title: "הקישור נוסף בהצלחה",
+        description: `הקישור "${newLinkName}" נוסף למשתמש ${selectedUser.username}`,
+      });
+    } catch (err) {
+      console.error('Error adding link:', err);
+      toast({
+        variant: "destructive",
+        title: "שגיאה בהוספת הקישור",
+        description: "אירעה שגיאה בעת הוספת הקישור. נסה שנית מאוחר יותר.",
+      });
+    }
   };
 
-  const handleRemoveLink = (linkId: string) => {
+  const handleRemoveLink = async (linkId: string) => {
     if (!selectedUser) return;
 
-    const updatedUsers = users.map(user => {
-      if (user.id === selectedUser.id) {
-        return {
-          ...user,
-          links: user.links.filter(link => link.id !== linkId)
-        };
-      }
-      return user;
-    });
+    try {
+      // Delete link from database
+      const { error } = await supabase
+        .from('user_links')
+        .delete()
+        .eq('id', linkId);
+      
+      if (error) throw error;
 
-    setUsers(updatedUsers);
-    setSelectedUser(updatedUsers.find(u => u.id === selectedUser.id) || null);
+      // Update local state
+      const updatedUsers = users.map(user => {
+        if (user.id === selectedUser.id) {
+          return {
+            ...user,
+            links: user.links.filter(link => link.id !== linkId)
+          };
+        }
+        return user;
+      });
 
-    toast({
-      title: "הקישור הוסר בהצלחה",
-      description: `הקישור הוסר ממשתמש ${selectedUser.username}`,
-    });
+      setUsers(updatedUsers);
+      setSelectedUser(updatedUsers.find(u => u.id === selectedUser.id) || null);
+
+      toast({
+        title: "הקישור הוסר בהצלחה",
+        description: `הקישור הוסר ממשתמש ${selectedUser.username}`,
+      });
+    } catch (err) {
+      console.error('Error removing link:', err);
+      toast({
+        variant: "destructive",
+        title: "שגיאה בהסרת הקישור",
+        description: "אירעה שגיאה בעת הסרת הקישור. נסה שנית מאוחר יותר.",
+      });
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="mr-2">טוען משתמשים...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive" className="my-4">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="grid md:grid-cols-3 gap-6 h-full animate-on-load">
@@ -123,21 +203,25 @@ export const UserManager: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {users.map(user => (
-              <Button
-                key={user.id}
-                variant={selectedUser?.id === user.id ? "default" : "outline"}
-                className="w-full justify-start"
-                onClick={() => handleSelectUser(user)}
-              >
-                <div className="flex justify-between w-full">
-                  <span>{user.username}</span>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                    {user.links.length} קישורים
-                  </span>
-                </div>
-              </Button>
-            ))}
+            {users.length === 0 ? (
+              <p className="text-sm text-gray-500">אין משתמשים להצגה</p>
+            ) : (
+              users.map(user => (
+                <Button
+                  key={user.id}
+                  variant={selectedUser?.id === user.id ? "default" : "outline"}
+                  className="w-full justify-start"
+                  onClick={() => handleSelectUser(user)}
+                >
+                  <div className="flex justify-between w-full">
+                    <span>{user.username}</span>
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                      {user.links.length} קישורים
+                    </span>
+                  </div>
+                </Button>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
