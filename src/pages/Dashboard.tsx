@@ -2,11 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserLink {
   id: string;
@@ -18,7 +18,7 @@ const Dashboard = () => {
   const [links, setLinks] = useState<UserLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchUserLinks = async () => {
@@ -26,31 +26,42 @@ const Dashboard = () => {
       setError(null);
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
         if (!user) {
-          navigate('/');
+          setLinks([]);
+          setLoading(false);
           return;
         }
         
-        const { data, error } = await supabase
-          .from('user_links')
-          .select('id, name, url')
-          .eq('user_id', user.id);
-        
-        if (error) throw error;
-        
-        setLinks(data || []);
+        // For demonstration purposes, use dummy links if we're using local authentication
+        // This allows the app to work with both the Context auth system and Supabase
+        if (user.username) {
+          // Using the AuthContext with dummy data
+          const dummyLinks = [
+            { id: '1', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
+            { id: '2', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' },
+            { id: '3', name: 'מערכת חופשות', url: 'https://www.hod-hasharon.muni.il/vacation' },
+          ];
+          setLinks(dummyLinks);
+        } else {
+          // Using Supabase authentication
+          const { data, error: fetchError } = await supabase
+            .from('user_links')
+            .select('id, name, url')
+            .eq('user_id', user.id);
+          
+          if (fetchError) throw fetchError;
+          setLinks(data || []);
+        }
       } catch (err) {
         console.error('Error fetching links:', err);
-        setError('Failed to load your links. Please try again later.');
+        setError('כשלון בטעינת הקישורים. אנא נסו שוב מאוחר יותר.');
       } finally {
         setLoading(false);
       }
     };
     
     fetchUserLinks();
-  }, [navigate]);
+  }, [user]);
 
   const handleOpenLink = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
