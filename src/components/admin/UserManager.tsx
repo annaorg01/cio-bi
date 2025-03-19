@@ -9,6 +9,7 @@ import { PlusCircle, Trash2, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/context/AuthContext';
 
 interface UserLink {
   id: string;
@@ -30,6 +31,10 @@ export const UserManager: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
+
+  // Check if we're using the context auth (for demonstration)
+  const isUsingContextAuth = !!currentUser?.username;
 
   // Fetch users and their links
   useEffect(() => {
@@ -37,14 +42,39 @@ export const UserManager: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        // Fetch profiles
+        if (isUsingContextAuth) {
+          // If using auth context, provide dummy data
+          const dummyUsers = [
+            {
+              id: '1',
+              username: 'user1',
+              links: [
+                { id: '1', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
+                { id: '2', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' }
+              ]
+            },
+            {
+              id: '2',
+              username: 'user2',
+              links: [
+                { id: '3', name: 'מערכת חופשות', url: 'https://www.hod-hasharon.muni.il/vacation' }
+              ]
+            }
+          ];
+          setUsers(dummyUsers);
+          setLoading(false);
+          return;
+        }
+
+        // For Supabase auth, fetch real data
+        // First, get all profiles without trying to determine if admin
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('id, username');
         
         if (profilesError) throw profilesError;
         
-        // For each profile, fetch their links
+        // Now for each profile, fetch their links
         const usersWithLinks = await Promise.all(
           profiles.map(async (profile) => {
             const { data: links, error: linksError } = await supabase
@@ -72,7 +102,7 @@ export const UserManager: React.FC = () => {
     };
     
     fetchUsers();
-  }, []);
+  }, [isUsingContextAuth]);
 
   const handleSelectUser = (user: UserData) => {
     setSelectedUser(user);
@@ -93,32 +123,55 @@ export const UserManager: React.FC = () => {
     }
 
     try {
-      // Add link to database
-      const { data, error } = await supabase
-        .from('user_links')
-        .insert({
-          user_id: selectedUser.id,
+      if (isUsingContextAuth) {
+        // Handle dummy data for context auth
+        const newLink = {
+          id: Math.random().toString(),
           name: newLinkName,
           url: newLinkUrl
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
+        };
+        
+        const updatedUsers = users.map(user => {
+          if (user.id === selectedUser.id) {
+            return {
+              ...user,
+              links: [...user.links, newLink]
+            };
+          }
+          return user;
+        });
+        
+        setUsers(updatedUsers);
+        setSelectedUser(updatedUsers.find(u => u.id === selectedUser.id) || null);
+      } else {
+        // Add link to database for Supabase auth
+        const { data, error } = await supabase
+          .from('user_links')
+          .insert({
+            user_id: selectedUser.id,
+            name: newLinkName,
+            url: newLinkUrl
+          })
+          .select()
+          .single();
+        
+        if (error) throw error;
 
-      // Update local state
-      const updatedUsers = users.map(user => {
-        if (user.id === selectedUser.id) {
-          return {
-            ...user,
-            links: [...user.links, data]
-          };
-        }
-        return user;
-      });
+        // Update local state
+        const updatedUsers = users.map(user => {
+          if (user.id === selectedUser.id) {
+            return {
+              ...user,
+              links: [...user.links, data]
+            };
+          }
+          return user;
+        });
 
-      setUsers(updatedUsers);
-      setSelectedUser(updatedUsers.find(u => u.id === selectedUser.id) || null);
+        setUsers(updatedUsers);
+        setSelectedUser(updatedUsers.find(u => u.id === selectedUser.id) || null);
+      }
+
       setNewLinkName('');
       setNewLinkUrl('');
 
@@ -140,27 +193,43 @@ export const UserManager: React.FC = () => {
     if (!selectedUser) return;
 
     try {
-      // Delete link from database
-      const { error } = await supabase
-        .from('user_links')
-        .delete()
-        .eq('id', linkId);
-      
-      if (error) throw error;
+      if (isUsingContextAuth) {
+        // Handle dummy data for context auth
+        const updatedUsers = users.map(user => {
+          if (user.id === selectedUser.id) {
+            return {
+              ...user,
+              links: user.links.filter(link => link.id !== linkId)
+            };
+          }
+          return user;
+        });
+        
+        setUsers(updatedUsers);
+        setSelectedUser(updatedUsers.find(u => u.id === selectedUser.id) || null);
+      } else {
+        // Delete link from database for Supabase auth
+        const { error } = await supabase
+          .from('user_links')
+          .delete()
+          .eq('id', linkId);
+        
+        if (error) throw error;
 
-      // Update local state
-      const updatedUsers = users.map(user => {
-        if (user.id === selectedUser.id) {
-          return {
-            ...user,
-            links: user.links.filter(link => link.id !== linkId)
-          };
-        }
-        return user;
-      });
+        // Update local state
+        const updatedUsers = users.map(user => {
+          if (user.id === selectedUser.id) {
+            return {
+              ...user,
+              links: user.links.filter(link => link.id !== linkId)
+            };
+          }
+          return user;
+        });
 
-      setUsers(updatedUsers);
-      setSelectedUser(updatedUsers.find(u => u.id === selectedUser.id) || null);
+        setUsers(updatedUsers);
+        setSelectedUser(updatedUsers.find(u => u.id === selectedUser.id) || null);
+      }
 
       toast({
         title: "הקישור הוסר בהצלחה",

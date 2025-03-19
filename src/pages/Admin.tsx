@@ -14,10 +14,12 @@ const Admin = () => {
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">ניהול משתמשים</h1>
-      <UserManager />
-    </div>
+    <DashboardLayout>
+      <div className="container mx-auto p-4 max-w-7xl">
+        <h1 className="text-2xl font-bold mb-6 text-right">ניהול משתמשים</h1>
+        <UserManager />
+      </div>
+    </DashboardLayout>
   );
 };
 
