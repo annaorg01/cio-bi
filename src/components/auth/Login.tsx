@@ -37,7 +37,7 @@ export const Login: React.FC = () => {
             alt="Logo" 
             className="h-20 mx-auto mb-6" 
           />
-          <h1 className="text-3xl font-bold text-gray-900">מערכת ניהול HR Brew</h1>
+          <h1 className="text-3xl font-bold text-gray-900">מערכת ניהול בינה עסקית</h1>
           <p className="text-gray-600 mt-2">התחבר כדי לגשת למערכת</p>
         </div>
 
@@ -91,13 +91,10 @@ export const Login: React.FC = () => {
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="flex justify-center text-sm text-gray-500">
-            <p>שם משתמש: admin | סיסמה: admin123</p>
-          </CardFooter>
         </Card>
 
         <div className="mt-6 text-center text-sm text-gray-600">
-          מערכת ניהול HR Brew | עיריית הוד השרון
+          מערכת ניהול בינה עסקית | עיריית הוד השרון
         </div>
       </div>
     </div>
