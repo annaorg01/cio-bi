@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserData, UserLink } from '@/components/admin/types';
 
@@ -41,35 +40,50 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
   }
 
   // For Supabase auth, fetch real data
-  // First, get all profiles without trying to determine if admin
-  const { data: profiles, error: profilesError } = await supabase
-    .from('profiles')
-    .select('id, username, email, department, full_name');
-  
-  if (profilesError) throw profilesError;
-  
-  // Now for each profile, fetch their links
-  const usersWithLinks = await Promise.all(
-    profiles.map(async (profile) => {
-      const { data: links, error: linksError } = await supabase
-        .from('user_links')
-        .select('id, name, url')
-        .eq('user_id', profile.id);
-      
-      if (linksError) throw linksError;
-      
-      return {
-        id: profile.id,
-        username: profile.username || 'Unknown User',
-        email: profile.email,
-        department: profile.department,
-        full_name: profile.full_name,
-        links: links || []
-      };
-    })
-  );
-  
-  return usersWithLinks;
+  try {
+    // First, get all profiles
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, username, email, department, full_name, is_admin');
+    
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+      throw profilesError;
+    }
+    
+    if (!profiles) {
+      return [];
+    }
+    
+    // Now for each profile, fetch their links
+    const usersWithLinks = await Promise.all(
+      profiles.map(async (profile) => {
+        const { data: links, error: linksError } = await supabase
+          .from('user_links')
+          .select('id, name, url')
+          .eq('user_id', profile.id);
+        
+        if (linksError) {
+          console.error('Error fetching links:', linksError);
+          throw linksError;
+        }
+        
+        return {
+          id: profile.id,
+          username: profile.username || 'Unknown User',
+          email: profile.email,
+          department: profile.department,
+          full_name: profile.full_name,
+          links: links || []
+        };
+      })
+    );
+    
+    return usersWithLinks;
+  } catch (error) {
+    console.error('Error in fetchUsers:', error);
+    throw error;
+  }
 };
 
 export const addUserLink = async (
