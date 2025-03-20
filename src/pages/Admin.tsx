@@ -15,7 +15,7 @@ const Admin = () => {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto p-4 max-w-7xl">
+      <div className="container mx-auto p-4 max-w-full">
         <h1 className="text-2xl font-bold mb-6 text-right">ניהול משתמשים</h1>
         <UserManager />
       </div>

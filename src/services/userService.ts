@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { UserData, UserLink } from '@/components/admin/types';
 
@@ -71,9 +72,9 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
         return {
           id: profile.id,
           username: profile.username || 'Unknown User',
-          email: profile.email,
-          department: profile.department,
-          full_name: profile.full_name,
+          email: profile.email || '',
+          department: profile.department || '',
+          full_name: profile.full_name || '',
           links: links || []
         };
       })
