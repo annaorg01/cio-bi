@@ -110,7 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ links, onSelectLink }) => {
                 alt="Logo" 
                 className="h-8 w-auto object-contain" 
               />
-              {!collapsed && <span className="text-sidebar-foreground font-bold">HR Brew</span>}
+              {!collapsed && <span className="text-sidebar-foreground font-bold">מערכת בינה עסקית</span>}
             </div>
           )}
           <Button 
