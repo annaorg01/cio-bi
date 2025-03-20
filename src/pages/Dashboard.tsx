@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink, Loader2, User } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -66,6 +67,28 @@ const Dashboard = () => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
   
+  const renderUserInfo = () => {
+    if (!user) return null;
+    
+    return (
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl flex items-center">
+            <User className="h-5 w-5 mr-2" />
+            פרטי משתמש
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 text-right">
+            <p className="font-bold text-lg">{user.full_name || user.username}</p>
+            {user.department && <p className="text-gray-600">{user.department}</p>}
+            {user.email && <p className="text-gray-500 text-sm">{user.email}</p>}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+  
   const renderContent = () => {
     if (loading) {
       return (
@@ -120,6 +143,7 @@ const Dashboard = () => {
     <DashboardLayout>
       <div className="container mx-auto p-4 max-w-7xl">
         <h1 className="text-3xl font-bold mb-6 text-right">הקישורים שלי</h1>
+        {renderUserInfo()}
         {renderContent()}
       </div>
     </DashboardLayout>

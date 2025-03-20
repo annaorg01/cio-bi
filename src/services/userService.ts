@@ -8,7 +8,10 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
     return [
       {
         id: '1',
-        username: 'user1',
+        username: 'advaz',
+        full_name: 'אדוה צביאלי',
+        email: 'AdvaZ@hod-hasharon.muni.il',
+        department: 'טכנולוגיות ומערכות מידע',
         links: [
           { id: '1', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
           { id: '2', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' }
@@ -16,9 +19,22 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
       },
       {
         id: '2',
-        username: 'user2',
+        username: 'meytalab',
+        full_name: 'מיטל אלבין- בש',
+        email: 'meytalab@hod-hasharon.muni.il',
+        department: 'משאבי אנוש',
         links: [
           { id: '3', name: 'מערכת חופשות', url: 'https://www.hod-hasharon.muni.il/vacation' }
+        ]
+      },
+      {
+        id: '3',
+        username: 'michala',
+        full_name: 'מיכל אלמגור',
+        email: 'MichalA@hod-hasharon.muni.il',
+        department: 'פניות ציבור וחופש המידע',
+        links: [
+          { id: '4', name: 'פניות ציבור', url: 'https://www.hod-hasharon.muni.il/public-requests' }
         ]
       }
     ];
@@ -28,7 +44,7 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
   // First, get all profiles without trying to determine if admin
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, username');
+    .select('id, username, email, department, full_name');
   
   if (profilesError) throw profilesError;
   
@@ -45,6 +61,9 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
       return {
         id: profile.id,
         username: profile.username || 'Unknown User',
+        email: profile.email,
+        department: profile.department,
+        full_name: profile.full_name,
         links: links || []
       };
     })

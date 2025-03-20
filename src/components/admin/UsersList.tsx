@@ -36,14 +36,22 @@ export const UsersList: React.FC<UsersListProps> = ({
               <Button
                 key={user.id}
                 variant={selectedUser?.id === user.id ? "default" : "outline"}
-                className="w-full justify-start"
+                className="w-full justify-start text-right"
                 onClick={() => onSelectUser(user)}
               >
-                <div className="flex justify-between w-full">
-                  <span>{user.username}</span>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                    {user.links.length} קישורים
-                  </span>
+                <div className="flex flex-col w-full items-start">
+                  <div className="flex justify-between w-full">
+                    <span className="font-bold">{user.full_name || user.username}</span>
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                      {user.links.length} קישורים
+                    </span>
+                  </div>
+                  {user.department && (
+                    <span className="text-xs text-gray-600">{user.department}</span>
+                  )}
+                  {user.email && (
+                    <span className="text-xs text-gray-500">{user.email}</span>
+                  )}
                 </div>
               </Button>
             ))

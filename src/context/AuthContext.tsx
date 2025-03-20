@@ -5,6 +5,9 @@ import { toast } from '@/components/ui/use-toast';
 interface User {
   id: string;
   username: string;
+  email?: string;
+  department?: string;
+  full_name?: string;
   isAdmin: boolean;
 }
 
@@ -18,9 +21,33 @@ interface AuthContextType {
 
 // Dummy users for demo purposes
 const USERS = [
-  { id: '1', username: 'admin', password: 'admin123', isAdmin: true },
-  { id: '2', username: 'user1', password: 'user123', isAdmin: false },
-  { id: '3', username: 'user2', password: 'user123', isAdmin: false }
+  { 
+    id: '1', 
+    username: 'advaz', 
+    password: 'admin123', 
+    isAdmin: true,
+    email: 'AdvaZ@hod-hasharon.muni.il',
+    full_name: 'אדוה צביאלי',
+    department: 'טכנולוגיות ומערכות מידע'
+  },
+  { 
+    id: '2', 
+    username: 'meytalab', 
+    password: 'user123', 
+    isAdmin: false,
+    email: 'meytalab@hod-hasharon.muni.il',
+    full_name: 'מיטל אלבין- בש',
+    department: 'משאבי אנוש'
+  },
+  { 
+    id: '3', 
+    username: 'michala', 
+    password: 'user123', 
+    isAdmin: false,
+    email: 'MichalA@hod-hasharon.muni.il',
+    full_name: 'מיכל אלמגור',
+    department: 'פניות ציבור וחופש המידע'
+  }
 ];
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('hrbrew-user', JSON.stringify(userWithoutPassword));
       toast({
         title: "התחברת בהצלחה",
-        description: `ברוך הבא, ${username}!`,
+        description: `ברוך הבא, ${foundUser.full_name || username}!`,
       });
       return true;
     }
