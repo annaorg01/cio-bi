@@ -34,14 +34,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       <Sidebar links={defaultLinks} onSelectLink={handleLinkSelect} />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 gap-6 h-full">
-            <div className="h-full rounded-lg animate-on-load">
+        <main className="flex-1 overflow-y-auto">
+          {selectedUrl ? (
+            <div className="h-screen w-full animate-on-load">
               <IframeContainer url={selectedUrl} className="h-full" />
             </div>
-            
-            {children || <Outlet />}
-          </div>
+          ) : (
+            <div className="p-6">
+              <div className="grid grid-cols-1 gap-6 h-full">
+                {children || <Outlet />}
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
