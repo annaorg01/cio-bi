@@ -24,7 +24,7 @@ const USERS = [
   { 
     id: '1', 
     username: 'advaz', 
-    password: 'admin123', 
+    password: 'AdvaZ913530', // Updated password
     isAdmin: true,
     email: 'AdvaZ@hod-hasharon.muni.il',
     full_name: 'אדוה צביאלי',
