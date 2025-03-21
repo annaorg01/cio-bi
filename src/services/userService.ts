@@ -7,34 +7,34 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
     // If using auth context, provide dummy data
     return [
       {
-        id: '1',
+        id: '11111111-1111-1111-1111-111111111111',
         username: 'advaz',
         full_name: 'אדוה צביאלי',
         email: 'AdvaZ@hod-hasharon.muni.il',
         department: 'טכנולוגיות ומערכות מידע',
         links: [
-          { id: '1', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
-          { id: '2', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' }
+          { id: '11111111-1111-1111-1111-111111111101', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
+          { id: '11111111-1111-1111-1111-111111111102', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' }
         ]
       },
       {
-        id: '2',
+        id: '22222222-2222-2222-2222-222222222222',
         username: 'meytalab',
         full_name: 'מיטל אלבין- בש',
         email: 'meytalab@hod-hasharon.muni.il',
         department: 'משאבי אנוש',
         links: [
-          { id: '3', name: 'מערכת חופשות', url: 'https://www.hod-hasharon.muni.il/vacation' }
+          { id: '22222222-2222-2222-2222-222222222201', name: 'מערכת חופשות', url: 'https://www.hod-hasharon.muni.il/vacation' }
         ]
       },
       {
-        id: '3',
+        id: '33333333-3333-3333-3333-333333333333',
         username: 'michala',
         full_name: 'מיכל אלמגור',
         email: 'MichalA@hod-hasharon.muni.il',
         department: 'פניות ציבור וחופש המידע',
         links: [
-          { id: '4', name: 'פניות ציבור', url: 'https://www.hod-hasharon.muni.il/public-requests' }
+          { id: '33333333-3333-3333-3333-333333333301', name: 'פניות ציבור', url: 'https://www.hod-hasharon.muni.il/public-requests' }
         ]
       }
     ];
