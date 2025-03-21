@@ -61,4 +61,3 @@ export const UsersList: React.FC<UsersListProps> = ({
     </Card>
   );
 };
-

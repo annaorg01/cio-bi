@@ -12,18 +12,27 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          department: string | null
+          email: string | null
+          full_name: string | null
           id: string
           is_admin: boolean | null
           username: string | null
         }
         Insert: {
           created_at?: string | null
+          department?: string | null
+          email?: string | null
+          full_name?: string | null
           id: string
           is_admin?: boolean | null
           username?: string | null
         }
         Update: {
           created_at?: string | null
+          department?: string | null
+          email?: string | null
+          full_name?: string | null
           id?: string
           is_admin?: boolean | null
           username?: string | null
