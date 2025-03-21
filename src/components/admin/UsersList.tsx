@@ -22,7 +22,7 @@ export const UsersList: React.FC<UsersListProps> = ({
   }
 
   return (
-    <Card className="md:col-span-1 md:min-w-[320px] max-w-full overflow-hidden">
+    <Card className="md:col-span-1 md:min-w-[400px] max-w-full overflow-hidden">
       <CardHeader>
         <CardTitle>משתמשים</CardTitle>
         <CardDescription>בחר משתמש לניהול הקישורים שלו</CardDescription>
@@ -36,21 +36,21 @@ export const UsersList: React.FC<UsersListProps> = ({
               <Button
                 key={user.id}
                 variant={selectedUser?.id === user.id ? "default" : "outline"}
-                className="w-full justify-start text-right overflow-hidden"
+                className="w-full justify-start text-right"
                 onClick={() => onSelectUser(user)}
               >
-                <div className="flex flex-col w-full items-start">
-                  <div className="flex justify-between w-full">
-                    <span className="font-bold truncate">{user.full_name || user.username}</span>
+                <div className="w-full">
+                  <div className="flex justify-between items-center w-full">
+                    <span className="font-bold max-w-[200px] truncate">{user.full_name || user.username}</span>
                     <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full shrink-0 mr-2">
                       {user.links.length} קישורים
                     </span>
                   </div>
                   {user.department && (
-                    <span className="text-xs text-gray-600 truncate w-full">{user.department}</span>
+                    <span className="block text-xs text-gray-600 max-w-full truncate mt-1">{user.department}</span>
                   )}
                   {user.email && (
-                    <span className="text-xs text-gray-500 truncate w-full">{user.email}</span>
+                    <span className="block text-xs text-gray-500 max-w-full truncate">{user.email}</span>
                   )}
                 </div>
               </Button>
@@ -61,3 +61,4 @@ export const UsersList: React.FC<UsersListProps> = ({
     </Card>
   );
 };
+
