@@ -52,7 +52,7 @@ serve(async (req) => {
     // Create a Supabase client with the auth header
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', // Use service role key for admin operations
       {
         global: {
           headers: { Authorization: authHeader },
@@ -60,24 +60,90 @@ serve(async (req) => {
       }
     );
 
-    // Call the change_user_password function
-    const { data, error } = await supabaseClient.rpc('change_user_password', {
-      target_user_email: email,
-      new_password: password,
-    });
-
-    if (error) {
-      console.error('Error changing password:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
+    // Check if the caller is an admin
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    
+    if (authError) {
+      console.error('Auth error:', authError);
+      return new Response(JSON.stringify({ error: 'Authentication failed' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'No authenticated user' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Get the user's profile to check admin status
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single();
+    
+    if (profileError) {
+      console.error('Profile error:', profileError);
+      return new Response(JSON.stringify({ error: 'Failed to verify admin status' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    
+    if (!profile?.is_admin) {
+      return new Response(JSON.stringify({ error: 'Only admins can change passwords' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    // Check if our function returned an error message
-    if (data && data.startsWith('error:')) {
-      return new Response(JSON.stringify({ error: data.substring(7) }), {
-        status: 400,
+    // Use the admin API to change the password of the user
+    const adminClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
+    // Find the user by email
+    const { data: users, error: usersError } = await adminClient
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+    
+    if (usersError) {
+      console.error('Failed to find user:', usersError);
+      return new Response(JSON.stringify({ error: 'User lookup failed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    if (!users) {
+      return new Response(JSON.stringify({ error: 'User not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Update the user's password using the admin API
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(
+      users.id,
+      { password: password }
+    );
+    
+    if (updateError) {
+      console.error('Error updating password:', updateError);
+      return new Response(JSON.stringify({ error: updateError.message }), {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

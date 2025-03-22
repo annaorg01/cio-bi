@@ -49,18 +49,32 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({
     setError(null);
 
     try {
+      // Get the current session token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      
+      if (!token) {
+        throw new Error('No authentication token available - please login again');
+      }
+
+      // Call the change-password function with the auth token
       const { data, error: functionError } = await supabase.functions.invoke('change-password', {
         body: {
           email: user.email,
           password: password
+        },
+        headers: {
+          Authorization: `Bearer ${token}`
         }
       });
 
       if (functionError) {
+        console.error('Function error:', functionError);
         throw new Error(functionError.message);
       }
 
-      if (data.error) {
+      if (data && data.error) {
+        console.error('Data error:', data.error);
         throw new Error(data.error);
       }
       
