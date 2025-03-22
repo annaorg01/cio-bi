@@ -63,8 +63,8 @@ const Dashboard = () => {
     fetchUserLinks();
   }, [user]);
 
-  const handleOpenLink = (url: string) => {
-    window.open(url, '_blank', 'noopener,noreferrer');
+  const handleLinkSelect = (url: string) => {
+    // This will now be handled by the DashboardLayout component
   };
   
   const renderUserInfo = () => {
@@ -126,7 +126,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <Button 
-                onClick={() => handleOpenLink(link.url)} 
+                onClick={() => handleLinkSelect(link.url)} 
                 className="w-full"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
@@ -140,7 +140,7 @@ const Dashboard = () => {
   };
 
   return (
-    <DashboardLayout>
+    <DashboardLayout userLinks={links}>
       <div className="container mx-auto p-4 max-w-7xl">
         <h1 className="text-3xl font-bold mb-6 text-right">הקישורים שלי</h1>
         {renderUserInfo()}

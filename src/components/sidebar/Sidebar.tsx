@@ -9,7 +9,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  Globe
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -166,7 +167,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ links, onSelectLink }) => {
         </div>
 
         <div className="mt-4 p-4">
-          <h2 className="text-sm font-semibold mb-2 text-sidebar-foreground">קישורים מהירים</h2>
+          <h2 className={cn(
+            "text-sm font-semibold mb-2 text-sidebar-foreground",
+            collapsed && "text-center"
+          )}>
+            {!collapsed ? "קישורים מהירים" : ""}
+          </h2>
           <div className="space-y-2">
             {links.map((link, index) => (
               <Button
@@ -178,7 +184,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ links, onSelectLink }) => {
                 )}
                 onClick={() => onSelectLink(link.url)}
               >
-                {collapsed ? "#" + (index + 1) : link.name}
+                {collapsed ? <Globe className="h-5 w-5" /> : link.name}
               </Button>
             ))}
           </div>

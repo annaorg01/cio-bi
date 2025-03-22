@@ -5,20 +5,36 @@ import { Sidebar } from '@/components/sidebar/Sidebar';
 import { IframeContainer } from '@/components/iframe/IframeContainer';
 import { useAuth } from '@/context/AuthContext';
 
-// Default links - in a real app, these would come from an API/database
-const defaultLinks = [
-  { name: 'דף בית עירייה', url: 'https://www.hod-hasharon.muni.il/' },
-  { name: 'לוח משרות', url: 'https://www.hod-hasharon.muni.il/jobs' },
-  { name: 'יצירת קשר', url: 'https://www.hod-hasharon.muni.il/contact' },
-];
+interface UserLink {
+  id: string;
+  name: string;
+  url: string;
+}
 
 interface DashboardLayoutProps {
   children?: ReactNode;
+  userLinks?: UserLink[];
 }
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ 
+  children,
+  userLinks = [] 
+}) => {
   const { isAuthenticated } = useAuth();
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
+
+  // Default links - in a real app, these would come from an API/database
+  const defaultLinks = [
+    { name: 'דף בית עירייה', url: 'https://www.hod-hasharon.muni.il/' },
+    { name: 'לוח משרות', url: 'https://www.hod-hasharon.muni.il/jobs' },
+    { name: 'יצירת קשר', url: 'https://www.hod-hasharon.muni.il/contact' },
+  ];
+
+  // Combine default links with user-specific links
+  const allLinks = [
+    ...defaultLinks,
+    ...userLinks.map(link => ({ name: link.name, url: link.url }))
+  ];
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
@@ -31,7 +47,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar links={defaultLinks} onSelectLink={handleLinkSelect} />
+      <Sidebar links={allLinks} onSelectLink={handleLinkSelect} />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto">
