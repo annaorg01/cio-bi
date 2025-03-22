@@ -11,5 +11,7 @@ export interface UserData {
   email?: string;
   department?: string;
   full_name?: string;
+  role?: string;
+  isAdmin?: boolean;
   links: UserLink[];
 }
