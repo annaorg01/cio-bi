@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { UsersList } from './UsersList';
 import { UserLinksManager } from './UserLinksManager';
+import { PasswordChangeModal } from './PasswordChangeModal';
 import { LoadingState } from './LoadingState';
 import { UserData, UserLink } from './types';
 import { fetchUsers, addUserLink, removeUserLink } from '@/services/userService';
@@ -14,6 +15,8 @@ export const UserManager: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [userForPasswordChange, setUserForPasswordChange] = useState<UserData | null>(null);
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
 
@@ -111,6 +114,16 @@ export const UserManager: React.FC = () => {
     }
   };
 
+  const handleChangePassword = (user: UserData) => {
+    setUserForPasswordChange(user);
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleClosePasswordModal = () => {
+    setIsPasswordModalOpen(false);
+    setUserForPasswordChange(null);
+  };
+
   if (loading) {
     return <LoadingState />;
   }
@@ -129,12 +142,18 @@ export const UserManager: React.FC = () => {
         users={users}
         selectedUser={selectedUser}
         onSelectUser={handleSelectUser}
+        onChangePassword={handleChangePassword}
         loading={loading}
       />
       <UserLinksManager
         selectedUser={selectedUser}
         onAddLink={handleAddLink}
         onRemoveLink={handleRemoveLink}
+      />
+      <PasswordChangeModal 
+        isOpen={isPasswordModalOpen}
+        onClose={handleClosePasswordModal}
+        user={userForPasswordChange}
       />
     </div>
   );
