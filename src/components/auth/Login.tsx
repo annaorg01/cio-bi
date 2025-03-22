@@ -6,23 +6,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const Login: React.FC = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     
     try {
-      const success = await login(username, password);
+      const success = await login(email, password);
       if (success) {
         navigate('/dashboard');
+      } else {
+        setError('שם משתמש או סיסמה שגויים');
       }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('אירעה שגיאה בתהליך ההתחברות');
     } finally {
       setLoading(false);
     }
@@ -49,15 +58,22 @@ export const Login: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username">שם משתמש</Label>
+                  <Label htmlFor="email">אימייל</Label>
                   <Input
-                    id="username"
-                    placeholder="הזן שם משתמש"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    id="email"
+                    type="email"
+                    placeholder="הזן אימייל"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                     className="text-right"
                   />
