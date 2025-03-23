@@ -22,6 +22,7 @@ export const UserLinksManager: React.FC<UserLinksManagerProps> = ({
 }) => {
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const handleAddLink = async () => {
@@ -36,12 +37,16 @@ export const UserLinksManager: React.FC<UserLinksManagerProps> = ({
       return;
     }
 
+    setIsSubmitting(true);
     try {
       await onAddLink(newLinkName, newLinkUrl);
+      // Only clear the form if the submission was successful
       setNewLinkName('');
       setNewLinkUrl('');
     } catch (err) {
       console.error('Error in link addition:', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -128,11 +133,11 @@ export const UserLinksManager: React.FC<UserLinksManagerProps> = ({
               </div>
               <Button 
                 onClick={handleAddLink}
-                disabled={!newLinkName || !newLinkUrl}
+                disabled={!newLinkName || !newLinkUrl || isSubmitting}
                 className="mt-2"
               >
                 <PlusCircle className="h-4 w-4 mr-2" />
-                הוסף קישור
+                {isSubmitting ? 'מוסיף...' : 'הוסף קישור'}
               </Button>
             </div>
           </div>

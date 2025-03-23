@@ -50,7 +50,9 @@ export const UserManager: React.FC = () => {
     if (!selectedUser) return;
     
     try {
+      console.log('Adding link for user:', selectedUser.id, name, url);
       const newLink = await addUserLink(selectedUser.id, name, url, isUsingContextAuth);
+      console.log('New link returned:', newLink);
       
       // Update local state
       const updatedUsers = users.map(user => {
@@ -63,8 +65,13 @@ export const UserManager: React.FC = () => {
         return user;
       });
 
+      console.log('Updated users state:', updatedUsers);
       setUsers(updatedUsers);
-      setSelectedUser(updatedUsers.find(u => u.id === selectedUser.id) || null);
+      
+      // Update the selected user state
+      const updatedSelectedUser = updatedUsers.find(u => u.id === selectedUser.id) || null;
+      console.log('Updated selected user:', updatedSelectedUser);
+      setSelectedUser(updatedSelectedUser);
 
       toast({
         title: "הקישור נוסף בהצלחה",
@@ -84,6 +91,7 @@ export const UserManager: React.FC = () => {
     if (!selectedUser) return;
 
     try {
+      console.log('Removing link:', linkId);
       await removeUserLink(linkId, isUsingContextAuth);
       
       // Update local state
@@ -97,8 +105,13 @@ export const UserManager: React.FC = () => {
         return user;
       });
 
+      console.log('Updated users after removal:', updatedUsers);
       setUsers(updatedUsers);
-      setSelectedUser(updatedUsers.find(u => u.id === selectedUser.id) || null);
+      
+      // Update the selected user state
+      const updatedSelectedUser = updatedUsers.find(u => u.id === selectedUser.id) || null;
+      console.log('Updated selected user after removal:', updatedSelectedUser);
+      setSelectedUser(updatedSelectedUser);
 
       toast({
         title: "הקישור הוסר בהצלחה",

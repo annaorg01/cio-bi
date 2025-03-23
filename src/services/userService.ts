@@ -103,11 +103,13 @@ export const addUserLink = async (
 ): Promise<UserLink> => {
   if (isUsingContextAuth) {
     // Handle dummy data for context auth
-    return {
+    const dummyLink = {
       id: Math.random().toString(),
       name,
       url
     };
+    console.log('Adding dummy link (context auth):', dummyLink);
+    return dummyLink;
   }
   
   console.log('Adding link to Supabase:', { userId, name, url });
@@ -134,17 +136,20 @@ export const addUserLink = async (
   } catch (error) {
     console.error('Error in addUserLink:', error);
     // Return a dummy link as fallback
-    return {
+    const fallbackLink = {
       id: Math.random().toString(),
       name,
       url
     };
+    console.log('Returning fallback link due to error:', fallbackLink);
+    return fallbackLink;
   }
 };
 
 export const removeUserLink = async (linkId: string, isUsingContextAuth: boolean): Promise<void> => {
   if (isUsingContextAuth) {
     // For context auth, the parent component will handle the state update
+    console.log('Removing dummy link (context auth):', linkId);
     return;
   }
   
