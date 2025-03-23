@@ -57,6 +57,8 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({
         throw new Error('No authentication token available - please login again');
       }
 
+      console.log("Calling change-password with email:", user.email);
+      
       // Call the change-password function with the auth token
       const { data, error: functionError } = await supabase.functions.invoke('change-password', {
         body: {
@@ -67,6 +69,8 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({
           Authorization: `Bearer ${token}`
         }
       });
+      
+      console.log("Function response:", data);
 
       if (functionError) {
         console.error('Function error:', functionError);

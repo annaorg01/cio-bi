@@ -49,10 +49,10 @@ serve(async (req) => {
       });
     }
 
-    // Create a Supabase client with the auth header
+    // Create a Supabase client with the auth header for checking user status
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', // Use service role key for admin operations
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
           headers: { Authorization: authHeader },
@@ -60,12 +60,12 @@ serve(async (req) => {
       }
     );
 
-    // Check if the caller is an admin
+    // Check if the caller is authenticated
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     
     if (authError) {
       console.error('Auth error:', authError);
-      return new Response(JSON.stringify({ error: 'Authentication failed' }), {
+      return new Response(JSON.stringify({ error: 'Authentication failed', details: authError.message }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -78,20 +78,24 @@ serve(async (req) => {
       });
     }
     
+    console.log("User authenticated:", user.id);
+    
     // Get the user's profile to check admin status
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('is_admin')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
     
     if (profileError) {
       console.error('Profile error:', profileError);
-      return new Response(JSON.stringify({ error: 'Failed to verify admin status' }), {
+      return new Response(JSON.stringify({ error: 'Failed to verify admin status', details: profileError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    
+    console.log("Profile data:", profile);
     
     if (!profile?.is_admin) {
       return new Response(JSON.stringify({ error: 'Only admins can change passwords' }), {
@@ -100,7 +104,7 @@ serve(async (req) => {
       });
     }
 
-    // Use the admin API to change the password of the user
+    // Create a new Supabase admin client with service role key
     const adminClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -112,37 +116,37 @@ serve(async (req) => {
       }
     );
 
-    // Find the user by email
-    const { data: users, error: usersError } = await adminClient
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .maybeSingle();
+    // Get the user id by email
+    const { data: userData, error: userError } = await adminClient.auth.admin.listUsers();
     
-    if (usersError) {
-      console.error('Failed to find user:', usersError);
-      return new Response(JSON.stringify({ error: 'User lookup failed' }), {
+    if (userError) {
+      console.error('Error listing users:', userError);
+      return new Response(JSON.stringify({ error: 'User lookup failed', details: userError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     
-    if (!users) {
+    const targetUser = userData.users.find(u => u.email === email);
+    
+    if (!targetUser) {
       return new Response(JSON.stringify({ error: 'User not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    console.log("Target user found:", targetUser.id);
+
     // Update the user's password using the admin API
     const { error: updateError } = await adminClient.auth.admin.updateUserById(
-      users.id,
-      { password: password }
+      targetUser.id,
+      { password }
     );
     
     if (updateError) {
       console.error('Error updating password:', updateError);
-      return new Response(JSON.stringify({ error: updateError.message }), {
+      return new Response(JSON.stringify({ error: 'Password update failed', details: updateError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -154,7 +158,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Unexpected error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
