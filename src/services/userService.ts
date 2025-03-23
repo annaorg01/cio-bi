@@ -2,6 +2,25 @@
 import { supabase } from '@/integrations/supabase/client';
 import { UserData, UserLink } from '@/components/admin/types';
 
+// Helper function to log user activity
+const logActivity = async (userId: string, actionType: string, details: any): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('activity_logs')
+      .insert({
+        user_id: userId,
+        action_type: actionType,
+        details
+      });
+    
+    if (error) {
+      console.error('Error logging activity:', error);
+    }
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+  }
+};
+
 export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[]> => {
   if (isUsingContextAuth) {
     // If using auth context, provide dummy data
@@ -115,6 +134,10 @@ export const addUserLink = async (
   console.log('Adding link to Supabase:', { userId, name, url });
   
   try {
+    // Get the current user's ID for activity logging
+    const { data: { user } } = await supabase.auth.getUser();
+    const adminId = user?.id || userId;
+    
     // Add link to database for Supabase auth
     const { data, error } = await supabase
       .from('user_links')
@@ -130,6 +153,14 @@ export const addUserLink = async (
       console.error('Error adding link:', error);
       throw error;
     }
+    
+    // Log the activity
+    await logActivity(adminId, 'add_link', {
+      target_user_id: userId,
+      link_id: data.id,
+      link_name: name,
+      link_url: url
+    });
     
     console.log('Link added successfully:', data);
     return data;
@@ -156,6 +187,16 @@ export const removeUserLink = async (linkId: string, isUsingContextAuth: boolean
   console.log('Removing link from Supabase:', linkId);
   
   try {
+    // Get the current user's ID for activity logging
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Get link details before deletion for logging
+    const { data: linkData } = await supabase
+      .from('user_links')
+      .select('user_id, name, url')
+      .eq('id', linkId)
+      .single();
+    
     // Delete link from database for Supabase auth
     const { error } = await supabase
       .from('user_links')
@@ -167,9 +208,40 @@ export const removeUserLink = async (linkId: string, isUsingContextAuth: boolean
       throw error;
     }
     
+    // Log the activity
+    if (user && linkData) {
+      await logActivity(user.id, 'remove_link', {
+        target_user_id: linkData.user_id,
+        link_id: linkId,
+        link_name: linkData.name,
+        link_url: linkData.url
+      });
+    }
+    
     console.log('Link removed successfully');
   } catch (error) {
     console.error('Error in removeUserLink:', error);
     // Silently fail and let the UI handle it
+  }
+};
+
+// Add a function to log password changes
+export const logPasswordChange = async (
+  adminUserId: string,
+  targetUserId: string
+): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('password_change_history')
+      .insert({
+        admin_user_id: adminUserId,
+        target_user_id: targetUserId
+      });
+    
+    if (error) {
+      console.error('Error logging password change:', error);
+    }
+  } catch (error) {
+    console.error('Failed to log password change:', error);
   }
 };

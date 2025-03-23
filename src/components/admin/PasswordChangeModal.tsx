@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UserData } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { logPasswordChange } from '@/services/userService';
 
 interface PasswordChangeModalProps {
   isOpen: boolean;
@@ -52,6 +53,7 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({
       // Get the current session token
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
+      const currentUser = sessionData.session?.user;
       
       if (!token) {
         throw new Error('No authentication token available - please login again');
@@ -80,6 +82,25 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({
       if (data && data.error) {
         console.error('Data error:', data.error);
         throw new Error(data.error);
+      }
+      
+      // Log the password change
+      if (currentUser && user.id) {
+        await logPasswordChange(currentUser.id, user.id);
+        
+        // Also log to activity_logs
+        try {
+          await supabase.from('activity_logs').insert({
+            user_id: currentUser.id,
+            action_type: 'change_password',
+            details: {
+              target_user_id: user.id,
+              target_user_email: user.email
+            }
+          });
+        } catch (logError) {
+          console.error('Error logging to activity_logs:', logError);
+        }
       }
       
       toast({
