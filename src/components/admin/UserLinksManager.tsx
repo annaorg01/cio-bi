@@ -88,15 +88,15 @@ export const UserLinksManager: React.FC<UserLinksManagerProps> = ({
   return (
     <Card className="md:col-span-2">
       <CardHeader>
-        <CardTitle>{`קישורים עבור ${selectedUser.username}`}</CardTitle>
+        <CardTitle>{selectedUser ? `קישורים עבור ${selectedUser.username}` : 'קישורים'}</CardTitle>
         <CardDescription>נהל את הקישורים של המשתמש הנבחר</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
           <div className="space-y-4">
             <h3 className="font-medium">קישורים קיימים</h3>
-            {selectedUser.links.length === 0 ? (
-              <p className="text-sm text-gray-500">אין קישורים למשתמש זה</p>
+            {!selectedUser || selectedUser.links.length === 0 ? (
+              <p className="text-sm text-gray-500">{selectedUser ? 'אין קישורים למשתמש זה' : 'בחר משתמש מהרשימה'}</p>
             ) : (
               <div className="space-y-2">
                 {selectedUser.links.map(link => (
@@ -125,49 +125,53 @@ export const UserLinksManager: React.FC<UserLinksManagerProps> = ({
             )}
           </div>
 
-          <Separator />
+          {selectedUser && (
+            <>
+              <Separator />
 
-          <div className="space-y-4">
-            <h3 className="font-medium">הוסף קישור חדש</h3>
-            
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="linkName">שם הקישור</Label>
-                <Input
-                  id="linkName"
-                  placeholder="לדוגמה: פורטל עובדים"
-                  value={newLinkName}
-                  onChange={(e) => setNewLinkName(e.target.value)}
-                  className="text-right"
-                />
+              <div className="space-y-4">
+                <h3 className="font-medium">הוסף קישור חדש</h3>
+                
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="linkName">שם הקישור</Label>
+                    <Input
+                      id="linkName"
+                      placeholder="לדוגמה: פורטל עובדים"
+                      value={newLinkName}
+                      onChange={(e) => setNewLinkName(e.target.value)}
+                      className="text-right"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="linkUrl">כתובת URL</Label>
+                    <Input
+                      id="linkUrl"
+                      placeholder="https://example.com"
+                      value={newLinkUrl}
+                      onChange={(e) => setNewLinkUrl(e.target.value)}
+                      className="text-right"
+                    />
+                  </div>
+                  <Button 
+                    onClick={handleAddLink}
+                    disabled={!newLinkName || !newLinkUrl || isSubmitting}
+                    className="mt-2"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    {isSubmitting ? 'מוסיף...' : 'הוסף קישור'}
+                  </Button>
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="linkUrl">כתובת URL</Label>
-                <Input
-                  id="linkUrl"
-                  placeholder="https://example.com"
-                  value={newLinkUrl}
-                  onChange={(e) => setNewLinkUrl(e.target.value)}
-                  className="text-right"
-                />
-              </div>
-              <Button 
-                onClick={handleAddLink}
-                disabled={!newLinkName || !newLinkUrl || isSubmitting}
-                className="mt-2"
-              >
-                <PlusCircle className="h-4 w-4 mr-2" />
-                {isSubmitting ? 'מוסיף...' : 'הוסף קישור'}
-              </Button>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -6,8 +6,8 @@ import { ExternalLink, Loader2, User } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { CONTEXT_USERS } from '@/types/auth';
-import { fetchUsers } from '@/services/userService';
+import { fetchUserLinks } from '@/services/userService';
+import { toast } from '@/components/ui/use-toast';
 
 interface UserLink {
   id: string;
@@ -35,47 +35,19 @@ const Dashboard = () => {
         
         console.log('Fetching links for user:', user);
         
-        // Using the AuthContext with context auth
-        if (user.username) {
-          console.log('Fetching links for context user:', user.username);
-          
-          // Get all users from our service to find the matching user and their links
-          const allUsers = await fetchUsers(true);
-          
-          // Find the user by username match
-          const matchingUser = allUsers.find(u => u.username === user.username);
-          
-          if (matchingUser) {
-            console.log('Found matching user in dummy data:', matchingUser.username);
-            console.log('Setting links from dummy data:', matchingUser.links);
-            setLinks(matchingUser.links);
-          } else {
-            console.log('User not found in dummy data, using default links');
-            // Fallback to default links
-            setLinks([
-              { id: '1', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
-              { id: '2', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' },
-            ]);
-          }
-        } else {
-          // Using Supabase authentication
-          console.log('Fetching links from Supabase for user ID:', user.id);
-          const { data, error: fetchError } = await supabase
-            .from('user_links')
-            .select('id, name, url')
-            .eq('user_id', user.id);
-          
-          if (fetchError) {
-            console.error('Error fetching links from Supabase:', fetchError);
-            throw fetchError;
-          }
-          
-          console.log('Received links from Supabase:', data);
-          setLinks(data || []);
-        }
+        // Fetch links from service - this will handle both auth types
+        const userLinks = await fetchUserLinks(user.id);
+        console.log('Received links:', userLinks);
+        setLinks(userLinks || []);
+        
       } catch (err) {
         console.error('Error fetching links:', err);
         setError('כשלון בטעינת הקישורים. אנא נסו שוב מאוחר יותר.');
+        toast({
+          variant: "destructive",
+          title: "שגיאה בטעינת קישורים",
+          description: "אירעה שגיאה בטעינת הקישורים. נסה שנית מאוחר יותר."
+        });
       } finally {
         setLoading(false);
       }

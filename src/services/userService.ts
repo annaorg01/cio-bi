@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { UserData, UserLink } from '@/components/admin/types';
 import { CONTEXT_USERS } from '@/types/auth';
+import { v4 as uuidv4 } from '@supabase/supabase-js/dist/main/lib/helpers';
 
 // Helper function to log user activity
 const logActivity = async (userId: string, actionType: string, details: any): Promise<void> => {
@@ -18,6 +19,64 @@ const logActivity = async (userId: string, actionType: string, details: any): Pr
     }
   } catch (error) {
     console.error('Failed to log activity:', error);
+  }
+};
+
+// Get proper UUID for context users (for Supabase compatibility)
+const getContextUserUuid = (userId: string): string => {
+  // If already a UUID, return as is
+  if (userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+    return userId;
+  }
+  
+  // For context users with numeric IDs, create deterministic UUIDs
+  switch (userId) {
+    case '1': return '00000000-0000-0000-0000-000000000001';
+    case '2': return '00000000-0000-0000-0000-000000000002';
+    case '3': return '00000000-0000-0000-0000-000000000003';
+    default: return `00000000-0000-0000-0000-${userId.padStart(12, '0')}`;
+  }
+};
+
+// Map context user to their proper UUID
+const getContextUserByUuid = (uuid: string): any | null => {
+  if (uuid === '00000000-0000-0000-0000-000000000001') {
+    return CONTEXT_USERS.find(u => u.id === '1');
+  } else if (uuid === '00000000-0000-0000-0000-000000000002') {
+    return CONTEXT_USERS.find(u => u.id === '2');
+  } else if (uuid === '00000000-0000-0000-0000-000000000003') {
+    return CONTEXT_USERS.find(u => u.id === '3');
+  }
+  return null;
+};
+
+// Get user links from Supabase
+export const fetchUserLinks = async (userId: string): Promise<UserLink[]> => {
+  console.log('Fetching links for user ID:', userId);
+  
+  // Convert context user ID to UUID if needed
+  const userUuid = getContextUserUuid(userId);
+  console.log('Using UUID:', userUuid);
+  
+  try {
+    // Fetch links from Supabase
+    const { data, error } = await supabase
+      .from('user_links')
+      .select('id, name, url')
+      .eq('user_id', userUuid);
+      
+    if (error) {
+      console.error('Error fetching links from Supabase:', error);
+      throw error;
+    }
+    
+    console.log('Links fetched from Supabase:', data);
+    return data || [];
+    
+  } catch (error) {
+    console.error('Error in fetchUserLinks:', error);
+    // Fall back to empty array
+    return [];
   }
 };
 
@@ -56,13 +115,6 @@ if (!dummyUsers[2].links || dummyUsers[2].links.length === 0) {
 export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[]> => {
   console.log('Fetching users, isUsingContextAuth:', isUsingContextAuth);
   
-  if (isUsingContextAuth) {
-    // If using auth context, provide synced dummy data
-    console.log('Returning dummy users with current links:', dummyUsers);
-    return [...dummyUsers];
-  }
-
-  // For Supabase auth, fetch real data
   try {
     console.log('Fetching users from Supabase...');
     // First, get all profiles
@@ -77,15 +129,35 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
     
     console.log('Fetched profiles:', profiles);
     
-    if (!profiles || profiles.length === 0) {
-      console.log('No profiles found in Supabase, returning dummy data');
-      // If no profiles in Supabase, return dummy data as fallback
-      return [...dummyUsers];
-    }
+    // Convert context users to have proper UUIDs for Supabase
+    const contextUsersWithUuid = CONTEXT_USERS.map(user => ({
+      ...user,
+      supabaseId: getContextUserUuid(user.id)
+    }));
+    
+    // Combine and deduplicate users from both sources
+    const allProfiles = [
+      ...(profiles || []),
+      ...contextUsersWithUuid.map(user => ({
+        id: user.supabaseId,
+        username: user.username,
+        email: user.email,
+        department: user.department,
+        full_name: user.full_name,
+        is_admin: user.isAdmin
+      }))
+    ];
+    
+    // Remove duplicates based on username
+    const uniqueProfiles = allProfiles.filter((profile, index, self) => 
+      profile.username && 
+      index === self.findIndex(p => p.username === profile.username)
+    );
     
     // Now for each profile, fetch their links
     const usersWithLinks = await Promise.all(
-      profiles.map(async (profile) => {
+      uniqueProfiles.map(async (profile) => {
+        // Get links from Supabase
         const { data: links, error: linksError } = await supabase
           .from('user_links')
           .select('id, name, url')
@@ -123,44 +195,22 @@ export const addUserLink = async (
   url: string,
   isUsingContextAuth: boolean
 ): Promise<UserLink> => {
-  if (isUsingContextAuth) {
-    // Handle dummy data for context auth
-    const newLinkId = Math.random().toString(36).substring(2);
-    const dummyLink = {
-      id: newLinkId,
-      name,
-      url
-    };
-    
-    console.log('Adding dummy link (context auth):', dummyLink);
-    
-    // Update our shared dummy data store
-    dummyUsers = dummyUsers.map(user => {
-      if (user.id === userId) {
-        return {
-          ...user,
-          links: [...user.links, dummyLink]
-        };
-      }
-      return user;
-    });
-    
-    console.log('Updated dummy users after adding link:', dummyUsers);
-    return dummyLink;
-  }
+  console.log('Adding link for user ID:', userId);
   
-  console.log('Adding link to Supabase:', { userId, name, url });
+  // Convert context user ID to UUID if needed
+  const userUuid = getContextUserUuid(userId);
+  console.log('Using UUID:', userUuid);
   
   try {
     // Get the current user's ID for activity logging
     const { data: { user } } = await supabase.auth.getUser();
-    const adminId = user?.id || userId;
+    const adminId = user?.id || userUuid;
     
-    // Add link to database for Supabase auth
+    // Add link to database
     const { data, error } = await supabase
       .from('user_links')
       .insert({
-        user_id: userId,
+        user_id: userUuid,
         name,
         url
       })
@@ -174,19 +224,33 @@ export const addUserLink = async (
     
     // Log the activity
     await logActivity(adminId, 'add_link', {
-      target_user_id: userId,
+      target_user_id: userUuid,
       link_id: data.id,
       link_name: name,
       link_url: url
     });
     
     console.log('Link added successfully:', data);
+    
+    // Update our local dummy data for backward compatibility
+    if (userId === '1' || userId === '2' || userId === '3') {
+      dummyUsers = dummyUsers.map(user => {
+        if (user.id === userId) {
+          return {
+            ...user,
+            links: [...user.links, data]
+          };
+        }
+        return user;
+      });
+    }
+    
     return data;
   } catch (error) {
     console.error('Error in addUserLink:', error);
     // Return a dummy link as fallback
     const fallbackLink = {
-      id: Math.random().toString(),
+      id: uuidv4(),
       name,
       url
     };
@@ -196,20 +260,6 @@ export const addUserLink = async (
 };
 
 export const removeUserLink = async (linkId: string, isUsingContextAuth: boolean): Promise<void> => {
-  if (isUsingContextAuth) {
-    console.log('Removing dummy link (context auth):', linkId);
-    
-    // Update our shared dummy data store by removing the link
-    dummyUsers = dummyUsers.map(user => {
-      return {
-        ...user,
-        links: user.links.filter(link => link.id !== linkId)
-      };
-    });
-    
-    return;
-  }
-  
   console.log('Removing link from Supabase:', linkId);
   
   try {
@@ -223,7 +273,7 @@ export const removeUserLink = async (linkId: string, isUsingContextAuth: boolean
       .eq('id', linkId)
       .single();
     
-    // Delete link from database for Supabase auth
+    // Delete link from database
     const { error } = await supabase
       .from('user_links')
       .delete()
@@ -245,6 +295,23 @@ export const removeUserLink = async (linkId: string, isUsingContextAuth: boolean
     }
     
     console.log('Link removed successfully');
+    
+    // Update our local dummy data for backward compatibility
+    if (linkData && linkData.user_id) {
+      const contextUser = getContextUserByUuid(linkData.user_id);
+      if (contextUser) {
+        const contextUserId = contextUser.id;
+        dummyUsers = dummyUsers.map(user => {
+          if (user.id === contextUserId) {
+            return {
+              ...user,
+              links: user.links.filter(link => link.id !== linkId)
+            };
+          }
+          return user;
+        });
+      }
+    }
   } catch (error) {
     console.error('Error in removeUserLink:', error);
     // Silently fail and let the UI handle it
@@ -256,12 +323,16 @@ export const logPasswordChange = async (
   adminUserId: string,
   targetUserId: string
 ): Promise<void> => {
+  // Convert context user IDs to UUIDs if needed
+  const adminUuid = getContextUserUuid(adminUserId);
+  const targetUuid = getContextUserUuid(targetUserId);
+  
   try {
     const { error } = await supabase
       .from('password_change_history')
       .insert({
-        admin_user_id: adminUserId,
-        target_user_id: targetUserId
+        admin_user_id: adminUuid,
+        target_user_id: targetUuid
       });
     
     if (error) {
