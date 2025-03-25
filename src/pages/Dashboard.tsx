@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { CONTEXT_USERS } from '@/types/auth';
+import { fetchUsers } from '@/services/userService';
 
 interface UserLink {
   id: string;
@@ -35,44 +35,23 @@ const Dashboard = () => {
         
         console.log('Fetching links for user:', user);
         
-        // For demonstration purposes, handle both auth systems
+        // Using the AuthContext with context auth
         if (user.username) {
-          // Using the AuthContext with context auth
-          // Find the matching dummy user to get their links
-          const contextUser = CONTEXT_USERS.find(u => u.username === user.username);
-          if (contextUser) {
-            console.log('Found context user:', contextUser.username);
-            // Fetch from our service instead to get synchronized links
-            const { data, error } = await supabase
-              .from('user_links')
-              .select('id, name, url')
-              .eq('user_id', contextUser.id);
-            
-            if (error) {
-              console.log('Falling back to shared dummy data');
-              // If API fails, check our shared dummy data
-              const dummyUsers = await import('@/services/userService').then(
-                module => module.fetchUsers(true)
-              );
-              const dummyUser = dummyUsers.find(u => u.username === user.username);
-              
-              if (dummyUser) {
-                console.log('Setting links from dummy data:', dummyUser.links);
-                setLinks(dummyUser.links);
-              } else {
-                console.log('No dummy user found, using fallback links');
-                // Fallback to some default links
-                setLinks([
-                  { id: '1', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
-                  { id: '2', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' },
-                ]);
-              }
-            } else {
-              console.log('Setting links from Supabase:', data);
-              setLinks(data || []);
-            }
+          console.log('Fetching links for context user:', user.username);
+          
+          // Get all users from our service to find the matching user and their links
+          const allUsers = await fetchUsers(true);
+          
+          // Find the user by username match
+          const matchingUser = allUsers.find(u => u.username === user.username);
+          
+          if (matchingUser) {
+            console.log('Found matching user in dummy data:', matchingUser.username);
+            console.log('Setting links from dummy data:', matchingUser.links);
+            setLinks(matchingUser.links);
           } else {
-            console.log('User not found in context, using default links');
+            console.log('User not found in dummy data, using default links');
+            // Fallback to default links
             setLinks([
               { id: '1', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
               { id: '2', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' },

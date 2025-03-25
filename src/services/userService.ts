@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserData, UserLink } from '@/components/admin/types';
+import { CONTEXT_USERS } from '@/types/auth';
 
 // Helper function to log user activity
 const logActivity = async (userId: string, actionType: string, details: any): Promise<void> => {
@@ -22,39 +22,36 @@ const logActivity = async (userId: string, actionType: string, details: any): Pr
 };
 
 // Storage for synchronized dummy data between context auth sessions
-let dummyUsers = [
-  {
-    id: '11111111-1111-1111-1111-111111111111',
-    username: 'advaz',
-    full_name: 'אדוה צביאלי',
-    email: 'AdvaZ@hod-hasharon.muni.il',
-    department: 'טכנולוגיות ומערכות מידע',
-    links: [
-      { id: '11111111-1111-1111-1111-111111111101', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
-      { id: '11111111-1111-1111-1111-111111111102', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' }
-    ]
-  },
-  {
-    id: '22222222-2222-2222-2222-222222222222',
-    username: 'meytalab',
-    full_name: 'מיטל אלבין- בש',
-    email: 'meytalab@hod-hasharon.muni.il',
-    department: 'משאבי אנוש',
-    links: [
-      { id: '22222222-2222-2222-2222-222222222201', name: 'מערכת חופשות', url: 'https://www.hod-hasharon.muni.il/vacation' }
-    ]
-  },
-  {
-    id: '33333333-3333-3333-3333-333333333333',
-    username: 'michala',
-    full_name: 'מיכל אלמגור',
-    email: 'MichalA@hod-hasharon.muni.il',
-    department: 'פניות ציבור וחופש המידע',
-    links: [
-      { id: '33333333-3333-3333-3333-333333333301', name: 'פניות ציבור', url: 'https://www.hod-hasharon.muni.il/public-requests' }
-    ]
-  }
-];
+let dummyUsers = CONTEXT_USERS.map(contextUser => {
+  return {
+    id: contextUser.id,
+    username: contextUser.username,
+    full_name: contextUser.full_name || '',
+    email: contextUser.email || '',
+    department: contextUser.department || '',
+    links: [] as UserLink[]
+  };
+});
+
+// Initialize with some default links if needed
+if (!dummyUsers[0].links || dummyUsers[0].links.length === 0) {
+  dummyUsers[0].links = [
+    { id: '11111111-1111-1111-1111-111111111101', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
+    { id: '11111111-1111-1111-1111-111111111102', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' }
+  ];
+}
+
+if (!dummyUsers[1].links || dummyUsers[1].links.length === 0) {
+  dummyUsers[1].links = [
+    { id: '22222222-2222-2222-2222-222222222201', name: 'מערכת חופשות', url: 'https://www.hod-hasharon.muni.il/vacation' }
+  ];
+}
+
+if (!dummyUsers[2].links || dummyUsers[2].links.length === 0) {
+  dummyUsers[2].links = [
+    { id: '33333333-3333-3333-3333-333333333301', name: 'פניות ציבור', url: 'https://www.hod-hasharon.muni.il/public-requests' }
+  ];
+}
 
 export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[]> => {
   console.log('Fetching users, isUsingContextAuth:', isUsingContextAuth);
@@ -148,6 +145,7 @@ export const addUserLink = async (
       return user;
     });
     
+    console.log('Updated dummy users after adding link:', dummyUsers);
     return dummyLink;
   }
   
