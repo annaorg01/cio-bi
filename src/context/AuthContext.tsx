@@ -12,12 +12,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log('Attempting login with:', email);
+      
       if (isUsingSupabase) {
         // Try Supabase auth first
         try {
+          console.log('Trying Supabase auth...');
           const data = await signInWithSupabase(email, password);
           
           if (data.session) {
+            console.log('Supabase login successful');
             toast({
               title: "התחברת בהצלחה",
               description: `ברוך הבא, ${email}!`,
@@ -28,11 +32,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Supabase login error:', error);
           
           // If Supabase auth fails, try context auth as fallback
+          console.log('Trying context auth fallback...');
           const contextUser = contextLogin(email, password);
           
           if (contextUser) {
+            console.log('Context auth successful:', contextUser);
             setIsUsingSupabase(false);
             setUser(contextUser);
+            
+            // Store in localStorage for persistence
+            localStorage.setItem('hrbrew-user', JSON.stringify(contextUser));
+            localStorage.setItem('hrbrew-auth-type', 'context');
+            
             return true;
           }
           
@@ -45,10 +56,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else {
         // Use context auth directly if not using Supabase
+        console.log('Using context auth directly...');
         const contextUser = contextLogin(email, password);
         
         if (contextUser) {
+          console.log('Context login successful:', contextUser);
           setUser(contextUser);
+          
+          // Store in localStorage for persistence
+          localStorage.setItem('hrbrew-user', JSON.stringify(contextUser));
+          localStorage.setItem('hrbrew-auth-type', 'context');
+          
           return true;
         }
       }
@@ -71,8 +89,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    console.log('Logging out user:', user);
     await signOut();
     setUser(null);
+    localStorage.removeItem('hrbrew-user');
+    localStorage.removeItem('hrbrew-auth-type');
   };
 
   return (

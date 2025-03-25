@@ -7,6 +7,7 @@ import { ExternalLink, Loader2, User } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { CONTEXT_USERS } from '@/types/auth';
 
 interface UserLink {
   id: string;
@@ -32,24 +33,65 @@ const Dashboard = () => {
           return;
         }
         
-        // For demonstration purposes, use dummy links if we're using local authentication
-        // This allows the app to work with both the Context auth system and Supabase
+        console.log('Fetching links for user:', user);
+        
+        // For demonstration purposes, handle both auth systems
         if (user.username) {
-          // Using the AuthContext with dummy data
-          const dummyLinks = [
-            { id: '1', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
-            { id: '2', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' },
-            { id: '3', name: 'מערכת חופשות', url: 'https://www.hod-hasharon.muni.il/vacation' },
-          ];
-          setLinks(dummyLinks);
+          // Using the AuthContext with context auth
+          // Find the matching dummy user to get their links
+          const contextUser = CONTEXT_USERS.find(u => u.username === user.username);
+          if (contextUser) {
+            console.log('Found context user:', contextUser.username);
+            // Fetch from our service instead to get synchronized links
+            const { data, error } = await supabase
+              .from('user_links')
+              .select('id, name, url')
+              .eq('user_id', contextUser.id);
+            
+            if (error) {
+              console.log('Falling back to shared dummy data');
+              // If API fails, check our shared dummy data
+              const dummyUsers = await import('@/services/userService').then(
+                module => module.fetchUsers(true)
+              );
+              const dummyUser = dummyUsers.find(u => u.username === user.username);
+              
+              if (dummyUser) {
+                console.log('Setting links from dummy data:', dummyUser.links);
+                setLinks(dummyUser.links);
+              } else {
+                console.log('No dummy user found, using fallback links');
+                // Fallback to some default links
+                setLinks([
+                  { id: '1', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
+                  { id: '2', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' },
+                ]);
+              }
+            } else {
+              console.log('Setting links from Supabase:', data);
+              setLinks(data || []);
+            }
+          } else {
+            console.log('User not found in context, using default links');
+            setLinks([
+              { id: '1', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
+              { id: '2', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' },
+            ]);
+          }
         } else {
           // Using Supabase authentication
+          console.log('Fetching links from Supabase for user ID:', user.id);
           const { data, error: fetchError } = await supabase
             .from('user_links')
             .select('id, name, url')
             .eq('user_id', user.id);
           
-          if (fetchError) throw fetchError;
+          if (fetchError) {
+            console.error('Error fetching links from Supabase:', fetchError);
+            throw fetchError;
+          }
+          
+          console.log('Received links from Supabase:', data);
           setLinks(data || []);
         }
       } catch (err) {

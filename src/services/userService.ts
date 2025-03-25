@@ -21,42 +21,48 @@ const logActivity = async (userId: string, actionType: string, details: any): Pr
   }
 };
 
+// Storage for synchronized dummy data between context auth sessions
+let dummyUsers = [
+  {
+    id: '11111111-1111-1111-1111-111111111111',
+    username: 'advaz',
+    full_name: 'אדוה צביאלי',
+    email: 'AdvaZ@hod-hasharon.muni.il',
+    department: 'טכנולוגיות ומערכות מידע',
+    links: [
+      { id: '11111111-1111-1111-1111-111111111101', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
+      { id: '11111111-1111-1111-1111-111111111102', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' }
+    ]
+  },
+  {
+    id: '22222222-2222-2222-2222-222222222222',
+    username: 'meytalab',
+    full_name: 'מיטל אלבין- בש',
+    email: 'meytalab@hod-hasharon.muni.il',
+    department: 'משאבי אנוש',
+    links: [
+      { id: '22222222-2222-2222-2222-222222222201', name: 'מערכת חופשות', url: 'https://www.hod-hasharon.muni.il/vacation' }
+    ]
+  },
+  {
+    id: '33333333-3333-3333-3333-333333333333',
+    username: 'michala',
+    full_name: 'מיכל אלמגור',
+    email: 'MichalA@hod-hasharon.muni.il',
+    department: 'פניות ציבור וחופש המידע',
+    links: [
+      { id: '33333333-3333-3333-3333-333333333301', name: 'פניות ציבור', url: 'https://www.hod-hasharon.muni.il/public-requests' }
+    ]
+  }
+];
+
 export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[]> => {
+  console.log('Fetching users, isUsingContextAuth:', isUsingContextAuth);
+  
   if (isUsingContextAuth) {
-    // If using auth context, provide dummy data
-    return [
-      {
-        id: '11111111-1111-1111-1111-111111111111',
-        username: 'advaz',
-        full_name: 'אדוה צביאלי',
-        email: 'AdvaZ@hod-hasharon.muni.il',
-        department: 'טכנולוגיות ומערכות מידע',
-        links: [
-          { id: '11111111-1111-1111-1111-111111111101', name: 'פורטל עובדים', url: 'https://www.hod-hasharon.muni.il/employees' },
-          { id: '11111111-1111-1111-1111-111111111102', name: 'מערכת שכר', url: 'https://www.hod-hasharon.muni.il/salary' }
-        ]
-      },
-      {
-        id: '22222222-2222-2222-2222-222222222222',
-        username: 'meytalab',
-        full_name: 'מיטל אלבין- בש',
-        email: 'meytalab@hod-hasharon.muni.il',
-        department: 'משאבי אנוש',
-        links: [
-          { id: '22222222-2222-2222-2222-222222222201', name: 'מערכת חופשות', url: 'https://www.hod-hasharon.muni.il/vacation' }
-        ]
-      },
-      {
-        id: '33333333-3333-3333-3333-333333333333',
-        username: 'michala',
-        full_name: 'מיכל אלמגור',
-        email: 'MichalA@hod-hasharon.muni.il',
-        department: 'פניות ציבור וחופש המידע',
-        links: [
-          { id: '33333333-3333-3333-3333-333333333301', name: 'פניות ציבור', url: 'https://www.hod-hasharon.muni.il/public-requests' }
-        ]
-      }
-    ];
+    // If using auth context, provide synced dummy data
+    console.log('Returning dummy users with current links:', dummyUsers);
+    return [...dummyUsers];
   }
 
   // For Supabase auth, fetch real data
@@ -77,7 +83,7 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
     if (!profiles || profiles.length === 0) {
       console.log('No profiles found in Supabase, returning dummy data');
       // If no profiles in Supabase, return dummy data as fallback
-      return fetchUsers(true);
+      return [...dummyUsers];
     }
     
     // Now for each profile, fetch their links
@@ -110,7 +116,7 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
     console.error('Error in fetchUsers:', error);
     console.log('Returning dummy data due to error');
     // On error, fall back to dummy data for demo purposes
-    return fetchUsers(true);
+    return [...dummyUsers];
   }
 };
 
@@ -122,12 +128,26 @@ export const addUserLink = async (
 ): Promise<UserLink> => {
   if (isUsingContextAuth) {
     // Handle dummy data for context auth
+    const newLinkId = Math.random().toString(36).substring(2);
     const dummyLink = {
-      id: Math.random().toString(),
+      id: newLinkId,
       name,
       url
     };
+    
     console.log('Adding dummy link (context auth):', dummyLink);
+    
+    // Update our shared dummy data store
+    dummyUsers = dummyUsers.map(user => {
+      if (user.id === userId) {
+        return {
+          ...user,
+          links: [...user.links, dummyLink]
+        };
+      }
+      return user;
+    });
+    
     return dummyLink;
   }
   
@@ -179,8 +199,16 @@ export const addUserLink = async (
 
 export const removeUserLink = async (linkId: string, isUsingContextAuth: boolean): Promise<void> => {
   if (isUsingContextAuth) {
-    // For context auth, the parent component will handle the state update
     console.log('Removing dummy link (context auth):', linkId);
+    
+    // Update our shared dummy data store by removing the link
+    dummyUsers = dummyUsers.map(user => {
+      return {
+        ...user,
+        links: user.links.filter(link => link.id !== linkId)
+      };
+    });
+    
     return;
   }
   
