@@ -1,28 +1,25 @@
-import { supabase } from '@/integrations/supabase/client';
+
+import { collection, doc, getDocs, addDoc, deleteDoc, query, where, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/integrations/firebase/client';
 import { UserData, UserLink } from '@/components/admin/types';
 import { CONTEXT_USERS } from '@/types/auth';
-import { v4 as uuidv4 } from '@supabase/supabase-js/dist/main/lib/helpers';
+import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to log user activity
 const logActivity = async (userId: string, actionType: string, details: any): Promise<void> => {
   try {
-    const { error } = await supabase
-      .from('activity_logs')
-      .insert({
-        user_id: userId,
-        action_type: actionType,
-        details
-      });
-    
-    if (error) {
-      console.error('Error logging activity:', error);
-    }
+    await addDoc(collection(db, 'activity_logs'), {
+      user_id: userId,
+      action_type: actionType,
+      details,
+      created_at: new Date()
+    });
   } catch (error) {
     console.error('Failed to log activity:', error);
   }
 };
 
-// Get proper UUID for context users (for Supabase compatibility)
+// Get proper UUID for context users
 const getContextUserUuid = (userId: string): string => {
   // If already a UUID, return as is
   if (userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
@@ -50,7 +47,7 @@ const getContextUserByUuid = (uuid: string): any | null => {
   return null;
 };
 
-// Get user links from Supabase
+// Get user links from Firebase
 export const fetchUserLinks = async (userId: string): Promise<UserLink[]> => {
   console.log('Fetching links for user ID:', userId);
   
@@ -59,19 +56,21 @@ export const fetchUserLinks = async (userId: string): Promise<UserLink[]> => {
   console.log('Using UUID:', userUuid);
   
   try {
-    // Fetch links from Supabase
-    const { data, error } = await supabase
-      .from('user_links')
-      .select('id, name, url')
-      .eq('user_id', userUuid);
-      
-    if (error) {
-      console.error('Error fetching links from Supabase:', error);
-      throw error;
-    }
+    // Fetch links from Firebase
+    const q = query(collection(db, 'user_links'), where('user_id', '==', userUuid));
+    const querySnapshot = await getDocs(q);
     
-    console.log('Links fetched from Supabase:', data);
-    return data || [];
+    const links: UserLink[] = [];
+    querySnapshot.forEach((doc) => {
+      links.push({
+        id: doc.id,
+        name: doc.data().name,
+        url: doc.data().url
+      });
+    });
+    
+    console.log('Links fetched from Firebase:', links);
+    return links;
     
   } catch (error) {
     console.error('Error in fetchUserLinks:', error);
@@ -116,30 +115,31 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
   console.log('Fetching users, isUsingContextAuth:', isUsingContextAuth);
   
   try {
-    console.log('Fetching users from Supabase...');
+    console.log('Fetching users from Firebase...');
     // First, get all profiles
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, username, email, department, full_name, is_admin');
+    const profilesSnapshot = await getDocs(collection(db, 'profiles'));
     
-    if (profilesError) {
-      console.error('Error fetching profiles:', profilesError);
-      throw profilesError;
-    }
+    const profiles: any[] = [];
+    profilesSnapshot.forEach((doc) => {
+      profiles.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
     
     console.log('Fetched profiles:', profiles);
     
-    // Convert context users to have proper UUIDs for Supabase
+    // Convert context users to have proper UUIDs for Firebase
     const contextUsersWithUuid = CONTEXT_USERS.map(user => ({
       ...user,
-      supabaseId: getContextUserUuid(user.id)
+      firebaseId: getContextUserUuid(user.id)
     }));
     
     // Combine and deduplicate users from both sources
     const allProfiles = [
       ...(profiles || []),
       ...contextUsersWithUuid.map(user => ({
-        id: user.supabaseId,
+        id: user.firebaseId,
         username: user.username,
         email: user.email,
         department: user.department,
@@ -157,16 +157,18 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
     // Now for each profile, fetch their links
     const usersWithLinks = await Promise.all(
       uniqueProfiles.map(async (profile) => {
-        // Get links from Supabase
-        const { data: links, error: linksError } = await supabase
-          .from('user_links')
-          .select('id, name, url')
-          .eq('user_id', profile.id);
+        // Get links from Firebase
+        const q = query(collection(db, 'user_links'), where('user_id', '==', profile.id));
+        const querySnapshot = await getDocs(q);
         
-        if (linksError) {
-          console.error('Error fetching links:', linksError);
-          throw linksError;
-        }
+        const links: UserLink[] = [];
+        querySnapshot.forEach((doc) => {
+          links.push({
+            id: doc.id,
+            name: doc.data().name,
+            url: doc.data().url
+          });
+        });
         
         return {
           id: profile.id,
@@ -174,7 +176,7 @@ export const fetchUsers = async (isUsingContextAuth: boolean): Promise<UserData[
           email: profile.email || '',
           department: profile.department || '',
           full_name: profile.full_name || '',
-          links: links || []
+          links: links
         };
       })
     );
@@ -203,34 +205,33 @@ export const addUserLink = async (
   
   try {
     // Get the current user's ID for activity logging
-    const { data: { user } } = await supabase.auth.getUser();
-    const adminId = user?.id || userUuid;
+    const adminId = userUuid; // Fallback
     
     // Add link to database
-    const { data, error } = await supabase
-      .from('user_links')
-      .insert({
-        user_id: userUuid,
-        name,
-        url
-      })
-      .select()
-      .single();
+    const newLink = {
+      user_id: userUuid,
+      name,
+      url,
+      created_at: new Date()
+    };
     
-    if (error) {
-      console.error('Error adding link:', error);
-      throw error;
-    }
+    const docRef = await addDoc(collection(db, 'user_links'), newLink);
+    
+    const linkData = {
+      id: docRef.id,
+      name,
+      url
+    };
     
     // Log the activity
     await logActivity(adminId, 'add_link', {
       target_user_id: userUuid,
-      link_id: data.id,
+      link_id: docRef.id,
       link_name: name,
       link_url: url
     });
     
-    console.log('Link added successfully:', data);
+    console.log('Link added successfully:', linkData);
     
     // Update our local dummy data for backward compatibility
     if (userId === '1' || userId === '2' || userId === '3') {
@@ -238,14 +239,14 @@ export const addUserLink = async (
         if (user.id === userId) {
           return {
             ...user,
-            links: [...user.links, data]
+            links: [...user.links, linkData]
           };
         }
         return user;
       });
     }
     
-    return data;
+    return linkData;
   } catch (error) {
     console.error('Error in addUserLink:', error);
     // Return a dummy link as fallback
@@ -260,56 +261,44 @@ export const addUserLink = async (
 };
 
 export const removeUserLink = async (linkId: string, isUsingContextAuth: boolean): Promise<void> => {
-  console.log('Removing link from Supabase:', linkId);
+  console.log('Removing link from Firebase:', linkId);
   
   try {
-    // Get the current user's ID for activity logging
-    const { data: { user } } = await supabase.auth.getUser();
-    
     // Get link details before deletion for logging
-    const { data: linkData } = await supabase
-      .from('user_links')
-      .select('user_id, name, url')
-      .eq('id', linkId)
-      .single();
+    const linkDocRef = doc(db, 'user_links', linkId);
+    const linkDoc = await getDoc(linkDocRef);
     
-    // Delete link from database
-    const { error } = await supabase
-      .from('user_links')
-      .delete()
-      .eq('id', linkId);
-    
-    if (error) {
-      console.error('Error removing link:', error);
-      throw error;
-    }
-    
-    // Log the activity
-    if (user && linkData) {
-      await logActivity(user.id, 'remove_link', {
-        target_user_id: linkData.user_id,
+    if (linkDoc.exists()) {
+      const linkData = linkDoc.data();
+      
+      // Delete link from database
+      await deleteDoc(linkDocRef);
+      
+      // Log the activity
+      await logActivity('admin', 'remove_link', {
         link_id: linkId,
         link_name: linkData.name,
-        link_url: linkData.url
+        link_url: linkData.url,
+        target_user_id: linkData.user_id
       });
-    }
-    
-    console.log('Link removed successfully');
-    
-    // Update our local dummy data for backward compatibility
-    if (linkData && linkData.user_id) {
-      const contextUser = getContextUserByUuid(linkData.user_id);
-      if (contextUser) {
-        const contextUserId = contextUser.id;
-        dummyUsers = dummyUsers.map(user => {
-          if (user.id === contextUserId) {
-            return {
-              ...user,
-              links: user.links.filter(link => link.id !== linkId)
-            };
-          }
-          return user;
-        });
+      
+      console.log('Link removed successfully');
+      
+      // Update our local dummy data for backward compatibility
+      if (linkData && linkData.user_id) {
+        const contextUser = getContextUserByUuid(linkData.user_id);
+        if (contextUser) {
+          const contextUserId = contextUser.id;
+          dummyUsers = dummyUsers.map(user => {
+            if (user.id === contextUserId) {
+              return {
+                ...user,
+                links: user.links.filter(link => link.id !== linkId)
+              };
+            }
+            return user;
+          });
+        }
       }
     }
   } catch (error) {
@@ -328,16 +317,11 @@ export const logPasswordChange = async (
   const targetUuid = getContextUserUuid(targetUserId);
   
   try {
-    const { error } = await supabase
-      .from('password_change_history')
-      .insert({
-        admin_user_id: adminUuid,
-        target_user_id: targetUuid
-      });
-    
-    if (error) {
-      console.error('Error logging password change:', error);
-    }
+    await addDoc(collection(db, 'password_change_history'), {
+      admin_user_id: adminUuid,
+      target_user_id: targetUuid,
+      changed_at: new Date()
+    });
   } catch (error) {
     console.error('Failed to log password change:', error);
   }

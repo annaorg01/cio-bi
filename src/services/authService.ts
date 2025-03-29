@@ -1,29 +1,33 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { 
+  signInWithEmailAndPassword, 
+  signOut as firebaseSignOut,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  User as FirebaseUser
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from '@/components/ui/use-toast';
 import { CONTEXT_USERS, UserProfile } from '@/types/auth';
+import { auth, db } from '@/integrations/firebase/client';
 
 /**
- * Fetches user profile from Supabase
+ * Fetches user profile from Firebase
  */
 export const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
   try {
-    const { data: profileData, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (error) throw error;
+    const userDocRef = doc(db, 'profiles', userId);
+    const userDoc = await getDoc(userDocRef);
     
-    if (profileData) {
+    if (userDoc.exists()) {
+      const profileData = userDoc.data();
       return {
-        id: profileData.id,
+        id: userId,
         username: profileData.username || '',
         email: profileData.email || '',
         full_name: profileData.full_name || '',
         department: profileData.department || '',
-        isAdmin: profileData.is_admin || false
+        isAdmin: profileData.isAdmin || false
       };
     }
     
@@ -47,17 +51,11 @@ export const createMinimalUserProfile = (userId: string, email?: string): UserPr
 };
 
 /**
- * Signs in with Supabase
+ * Signs in with Firebase
  */
-export const signInWithSupabase = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if (error) throw error;
-  
-  return data;
+export const signInWithFirebase = async (email: string, password: string) => {
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  return userCredential;
 };
 
 /**
@@ -84,10 +82,10 @@ export const contextLogin = (email: string, password: string) => {
 };
 
 /**
- * Signs out the user from Supabase
+ * Signs out the user from Firebase
  */
 export const signOut = async () => {
-  await supabase.auth.signOut();
+  await firebaseSignOut(auth);
   localStorage.removeItem('hrbrew-user');
   
   toast({

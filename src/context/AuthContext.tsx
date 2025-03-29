@@ -3,25 +3,25 @@ import React, { createContext, useContext } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { AuthContextType } from '@/types/auth';
 import { useAuthState } from '@/hooks/useAuthState';
-import { contextLogin, signInWithSupabase, signOut } from '@/services/authService';
+import { contextLogin, signInWithFirebase, signOut } from '@/services/authService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, supabaseUser, session, isUsingSupabase, setUser, setIsUsingSupabase } = useAuthState();
+  const { user, firebaseUser, isUsingFirebase, setUser, setIsUsingFirebase } = useAuthState();
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       console.log('Attempting login with:', email);
       
-      if (isUsingSupabase) {
-        // Try Supabase auth first
+      if (isUsingFirebase) {
+        // Try Firebase auth first
         try {
-          console.log('Trying Supabase auth...');
-          const data = await signInWithSupabase(email, password);
+          console.log('Trying Firebase auth...');
+          const userCredential = await signInWithFirebase(email, password);
           
-          if (data.session) {
-            console.log('Supabase login successful');
+          if (userCredential) {
+            console.log('Firebase login successful');
             toast({
               title: "התחברת בהצלחה",
               description: `ברוך הבא, ${email}!`,
@@ -29,15 +29,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return true;
           }
         } catch (error) {
-          console.error('Supabase login error:', error);
+          console.error('Firebase login error:', error);
           
-          // If Supabase auth fails, try context auth as fallback
+          // If Firebase auth fails, try context auth as fallback
           console.log('Trying context auth fallback...');
           const contextUser = contextLogin(email, password);
           
           if (contextUser) {
             console.log('Context auth successful:', contextUser);
-            setIsUsingSupabase(false);
+            setIsUsingFirebase(false);
             setUser(contextUser);
             
             // Store in localStorage for persistence
@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return false;
         }
       } else {
-        // Use context auth directly if not using Supabase
+        // Use context auth directly if not using Firebase
         console.log('Using context auth directly...');
         const contextUser = contextLogin(email, password);
         
@@ -100,8 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
-        supabaseUser,
-        session,
+        firebaseUser,
         isAuthenticated: !!user,
         isAdmin: user?.isAdmin || false,
         login,

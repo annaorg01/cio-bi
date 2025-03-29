@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { ExternalLink, Loader2, User } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { fetchUserLinks } from '@/services/userService';
 import { toast } from '@/components/ui/use-toast';
 
@@ -22,7 +22,7 @@ const Dashboard = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    const fetchUserLinks = async () => {
+    const loadUserLinks = async () => {
       setLoading(true);
       setError(null);
 
@@ -53,7 +53,7 @@ const Dashboard = () => {
       }
     };
     
-    fetchUserLinks();
+    loadUserLinks();
   }, [user]);
 
   const handleLinkSelect = (url: string) => {

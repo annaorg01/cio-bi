@@ -1,5 +1,5 @@
 
-import { Session, User } from '@supabase/supabase-js';
+import { User as FirebaseUser } from 'firebase/auth';
 
 export interface UserProfile {
   id: string;
@@ -12,8 +12,7 @@ export interface UserProfile {
 
 export interface AuthContextType {
   user: UserProfile | null;
-  supabaseUser: User | null;
-  session: Session | null;
+  firebaseUser: FirebaseUser | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<boolean>;
