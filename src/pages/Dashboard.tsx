@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/AuthContext';
 import { fetchUserLinks } from '@/services/userService';
 import { toast } from '@/components/ui/use-toast';
+import JsonUserList from '@/components/JsonUserList'; // Adjusted path
 
 interface UserLink {
   id: string;
@@ -138,6 +139,7 @@ const Dashboard = () => {
         <h1 className="text-3xl font-bold mb-6 text-right">הקישורים שלי</h1>
         {renderUserInfo()}
         {renderContent()}
+        <JsonUserList /> {/* Add the new component here */}
       </div>
     </DashboardLayout>
   );
